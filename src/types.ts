@@ -35,10 +35,10 @@ export interface StoryLoadOptions {
 export interface StoryCache {
   days: number;
   feed: StoryFeed;
+  format: number;
   generatedAt: string;
   maxItem: number;
   stories: Story[];
-  version: number;
 }
 
 export interface StoryLoadProgress {
@@ -51,8 +51,47 @@ export interface StoryLoadProgress {
   phase: "cache" | "network";
 }
 
+export interface ArticleParagraphBlock {
+  text: string;
+  type: "paragraph";
+}
+
+export interface ArticleHeadingBlock {
+  level: number;
+  text: string;
+  type: "heading";
+}
+
+export interface ArticleListBlock {
+  items: string[];
+  ordered: boolean;
+  type: "list";
+}
+
+export interface ArticleQuoteBlock {
+  blocks: ArticleBlock[];
+  type: "quote";
+}
+
+export interface ArticleCodeBlock {
+  text: string;
+  type: "code";
+}
+
+export interface ArticleRuleBlock {
+  type: "rule";
+}
+
+export type ArticleBlock =
+  | ArticleParagraphBlock
+  | ArticleHeadingBlock
+  | ArticleListBlock
+  | ArticleQuoteBlock
+  | ArticleCodeBlock
+  | ArticleRuleBlock;
+
 export interface ArticleContent {
-  body: string;
+  blocks: ArticleBlock[];
   footer: string;
   title: string;
 }

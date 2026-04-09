@@ -14,10 +14,12 @@ import { cutoffDaysAgo, extractDomain } from "./utils.js";
 
 const API_ROOT = "https://hacker-news.firebaseio.com/v0";
 const CACHE_DIRECTORY = path.join(process.cwd(), ".cache");
-const CACHE_VERSION = 2;
+const CACHE_FORMAT = 2;
 const FETCH_BATCH_SIZE = 60;
+const INITIAL_REFRESH_HEAD_COUNT = FETCH_BATCH_SIZE;
+const REFRESH_HEAD_COUNT = FETCH_BATCH_SIZE * 2;
 const REQUEST_HEADERS = {
-  "user-agent": "HN Weekline CLI/1.0",
+  "user-agent": "HackerDispatch CLI",
 };
 
 const itemCache = new Map<number, HackerNewsItem | null>();
@@ -28,6 +30,7 @@ export async function loadRecentStories(options: StoryLoadOptions, onProgress?: 
   const cutoffMs = cutoffDaysAgo(options.days);
   const cachePath = getCachePath(options.feed, options.days);
   const cached = await readCache(cachePath, options);
+  const cachedStoriesById = new Map((cached?.stories ?? []).map((story) => [story.id, story]));
 
   onProgress?.({
     coverageDays: cached ? Math.min(options.days, ageCoverageDays(cached.stories)) : 0,
@@ -44,29 +47,69 @@ export async function loadRecentStories(options: StoryLoadOptions, onProgress?: 
   const rankedIds = await fetchJson<number[]>(`${API_ROOT}/${options.feed}.json`);
   const stories: Story[] = [];
   let examined = 0;
+  let oldestStoryTimeMs = Number.POSITIVE_INFINITY;
+  const refreshHeadCount = cached
+    ? (options.forceRefresh ? REFRESH_HEAD_COUNT : INITIAL_REFRESH_HEAD_COUNT)
+    : rankedIds.length;
 
   for (let start = 0; start < rankedIds.length; start += FETCH_BATCH_SIZE) {
     const ids = rankedIds.slice(start, start + FETCH_BATCH_SIZE);
-    const items = await fetchItems(ids, options.forceRefresh ?? false);
+    const batchStories = new Array<Story | null>(ids.length).fill(null);
+    const freshFetchOffsets: number[] = [];
+    const cachedFetchOffsets: number[] = [];
 
-    for (const item of items) {
-      examined += 1;
+    for (const [offset, id] of ids.entries()) {
+      const shouldRefreshHead = (start + offset) < refreshHeadCount;
+      const cachedStory = shouldRefreshHead ? undefined : cachedStoriesById.get(id);
 
-      if (!item || typeof item.time !== "number") {
+      if (cachedStory) {
+        batchStories[offset] = cachedStory;
         continue;
       }
 
-      if ((item.time * 1000) < cutoffMs) {
-        continue;
-      }
-
-      if (isRenderableStory(item)) {
-        stories.push(mapStory(item));
+      if (shouldRefreshHead) {
+        freshFetchOffsets.push(offset);
+      } else {
+        cachedFetchOffsets.push(offset);
       }
     }
 
+    const [freshItems, cachedItems] = await Promise.all([
+      fetchItems(freshFetchOffsets.map((offset) => ids[offset]!), false),
+      fetchItems(cachedFetchOffsets.map((offset) => ids[offset]!), true),
+    ]);
+
+    for (const [index, item] of freshItems.entries()) {
+      const offset = freshFetchOffsets[index];
+      if (offset === undefined) {
+        continue;
+      }
+
+      batchStories[offset] = mapRenderableStory(item);
+    }
+
+    for (const [index, item] of cachedItems.entries()) {
+      const offset = cachedFetchOffsets[index];
+      if (offset === undefined) {
+        continue;
+      }
+
+      batchStories[offset] = mapRenderableStory(item);
+    }
+
+    for (const story of batchStories) {
+      examined += 1;
+
+      if (!story || !isStoryWithinCutoff(story, cutoffMs)) {
+        continue;
+      }
+
+      stories.push(story);
+      oldestStoryTimeMs = Math.min(oldestStoryTimeMs, story.time * 1000);
+    }
+
     onProgress?.({
-      coverageDays: Math.min(options.days, ageCoverageDays(stories)),
+      coverageDays: coverageDaysFromOldest(options.days, oldestStoryTimeMs),
       currentId: Math.max(0, rankedIds.length - examined),
       examined,
       found: stories.length,
@@ -79,10 +122,10 @@ export async function loadRecentStories(options: StoryLoadOptions, onProgress?: 
   await writeCache(cachePath, {
     days: options.days,
     feed: options.feed,
+    format: CACHE_FORMAT,
     generatedAt: new Date().toISOString(),
     maxItem: rankedIds.length,
     stories,
-    version: CACHE_VERSION,
   });
 
   return stories;
@@ -131,6 +174,14 @@ async function fetchJson<T>(url: string): Promise<T> {
   throw lastError;
 }
 
+function coverageDaysFromOldest(days: number, oldestStoryTimeMs: number): number {
+  if (!Number.isFinite(oldestStoryTimeMs)) {
+    return 0;
+  }
+
+  return Math.min(days, (Date.now() - oldestStoryTimeMs) / (24 * 60 * 60 * 1000));
+}
+
 function filterStoriesByCutoff(stories: Story[], cutoffMs: number): Story[] {
   return stories.filter((story) => (story.time * 1000) >= cutoffMs);
 }
@@ -160,6 +211,14 @@ function isRenderableStory(item: HackerNewsItem): boolean {
   return item.type === "story" && !item.dead && !item.deleted && Boolean(item.title);
 }
 
+function isStoryWithinCutoff(story: Story, cutoffMs: number): boolean {
+  return (story.time * 1000) >= cutoffMs;
+}
+
+function mapRenderableStory(item: HackerNewsItem | null): Story | null {
+  return item && isRenderableStory(item) ? mapStory(item) : null;
+}
+
 function mapStory(item: HackerNewsItem): Story {
   return {
     by: item.by ?? "unknown",
@@ -180,7 +239,7 @@ async function readCache(cachePath: string, options: StoryLoadOptions): Promise<
     const parsed = JSON.parse(raw) as StoryCache;
 
     if (
-      parsed.version !== CACHE_VERSION ||
+      parsed.format !== CACHE_FORMAT ||
       parsed.feed !== options.feed ||
       parsed.days !== options.days ||
       !Array.isArray(parsed.stories) ||

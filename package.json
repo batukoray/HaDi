@@ -1,6 +1,8 @@
 {
-  "name": "hackernewscrape",
-  "version": "1.0.0",
+  "name": "hackerdispatch",
+  "bin": {
+    "hadi": "bin/hadi.js"
+  },
   "private": true,
   "type": "module",
   "scripts": {
