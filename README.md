@@ -1,8 +1,11 @@
-# HackerDispatch
+<img src="https://raw.githubusercontent.com/batukoray/assets_of_mine/refs/heads/main/HaDi_Banner.png" width="600"/>
 
-HackerDispatch is a full-screen terminal client for Hacker News built with TypeScript and `blessed`.
 
-It loads ranked stories from the official Hacker News API, filters them to a recent time window, keeps the list live with background refresh, and renders full articles directly inside the terminal.
+**Ha**cker**Di**spatch, or **HaDi** is a full-screen terminal client for Hacker News built with TypeScript and `blessed`.
+
+The main idea was a friend of mine was always trying to convince me to transition my main source of news from Youtube to HackerNews, but I found HackerNews' interface really uninspired I should say. Therefore I got this idea to just re-make their interface, but as a CLI application. 
+
+**HaDi** loads ranked stories from the official Hacker News API, filters them to a recent time window, keeps the list live with background refresh, and renders full articles directly inside the terminal.
 
 ## What It Does
 
@@ -14,6 +17,10 @@ It loads ranked stories from the official Hacker News API, filters them to a rec
 - Extracts readable article content with Mozilla Readability
 - Supports Hacker News self-posts, external articles, and rendering fallbacks
 - Caches story data locally to speed up later launches
+
+## Interface
+<img src="https://raw.githubusercontent.com/batukoray/assets_of_mine/refs/heads/main/HaDi_GUI.png" width="600"/>
+
 
 ## Requirements
 
@@ -126,22 +133,9 @@ If a page cannot be rendered cleanly, HackerDispatch falls back to a readable er
 - Rendering quality depends on the source page. Some sites extract cleanly, others require fallback handling.
 - The interface is designed for monospaced terminal fonts. Proportional fonts will break alignment.
 
-## Development
+## Credits
+Built by *Batu Koray Masak* · *CS & AI Engineering* @ *Özyeğin University*
 
-Install dependencies:
-
-```bash
-npm install
-```
-
-Run the app directly during development:
-
-```bash
-npm start
-```
-
-Compile TypeScript:
-
-```bash
-npm run build
-```
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/batukoray)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/batu-koray-masak/)
+[![Email](https://img.shields.io/badge/Email-EA4335?style=flat&logo=gmail&logoColor=white)](mailto:batukoraymasak@gmail.com)
