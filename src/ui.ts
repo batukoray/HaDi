@@ -59,19 +59,27 @@ const ARTICLE_ZOOM_PRESETS = [
   },
 ] as const;
 const THEME = {
-  accent: "#ff9a52",
-  accentMuted: "#f4c095",
+  accent: "#ffb35c",
+  accentMuted: "#ffd39b",
   bg: "#07131d",
-  border: "#294053",
-  borderSoft: "#1b3142",
+  border: "#36707a",
+  borderSoft: "#2a5e66",
+  chipAlt: "#163842",
+  chipBg: "#1d4651",
+  comments: "#ff9f73",
+  domain: "#86d2ff",
   highlight: "#26867c",
+  hint: "#9fd6de",
+  meta: "#9dc9d3",
   panel: "#10202d",
   panelAlt: "#0c1824",
+  score: "#ffd27d",
   selected: "#26867c",
   selectedAccent: "#26867c",
   text: "#f6f2e9",
-  textMuted: "#8ba3b7",
-  textSoft: "#c7d7e2",
+  textMuted: "#9cbfc9",
+  textSoft: "#d8ebf1",
+  time: "#9bd9c8",
 };
 
 type DayWindow = typeof DAY_WINDOWS[number];
@@ -164,7 +172,15 @@ export class HackerNewsCli {
     this.screen.key(["pageup"], () => {
       this.scrollArticle(-Math.max(8, this.screenHeight() - 14));
     });
-    this.screen.key(["pagedown", "space"], () => {
+    this.screen.key(["pagedown"], () => {
+      this.scrollArticle(Math.max(8, this.screenHeight() - 14));
+    });
+    this.screen.key(["space"], () => {
+      if (this.view === "list") {
+        void this.handleEnter();
+        return;
+      }
+
       this.scrollArticle(Math.max(8, this.screenHeight() - 14));
     });
     this.screen.key(["+", "="], () => {
@@ -209,11 +225,11 @@ export class HackerNewsCli {
       height: 3,
       left: 0,
       padding: {
-        left: 1,
-        right: 1,
+        left: 2,
+        right: 2,
       },
       style: {
-        bg: THEME.panel,
+        bg: THEME.bg,
         fg: THEME.text,
       },
       tags: true,
@@ -229,7 +245,7 @@ export class HackerNewsCli {
       style: {
         bg: THEME.panel,
         border: {
-          fg: THEME.border,
+          fg: THEME.borderSoft,
         },
         fg: THEME.text,
       },
@@ -312,11 +328,11 @@ export class HackerNewsCli {
       height: 3,
       left: 0,
       padding: {
-        left: 1,
-        right: 1,
+        left: 2,
+        right: 2,
       },
       style: {
-        bg: THEME.panel,
+        bg: THEME.bg,
         fg: THEME.textMuted,
       },
       tags: true,
@@ -330,7 +346,7 @@ export class HackerNewsCli {
       hidden: true,
       right: 1,
       style: {
-        bg: THEME.panel,
+        bg: THEME.bg,
         fg: THEME.textSoft,
       },
       tags: true,
@@ -770,6 +786,13 @@ export class HackerNewsCli {
     this.renderArticleFooter();
   }
 
+  private renderChromeChip(label: string, fg: string, bg: string, bold = false): string {
+    const text = escapeTags(label);
+    return bold
+      ? `{${bg}-bg}{${fg}-fg}{bold} ${text} {/bold}{/}{/}`
+      : `{${bg}-bg}{${fg}-fg} ${text} {/}{/}`;
+  }
+
   private renderFooter(): void {
     if (this.view === "article" || this.view === "article-loading") {
       this.footer.hide();
@@ -779,15 +802,25 @@ export class HackerNewsCli {
 
     const selector = this.renderDayWindowSelector();
     const dividerWidth = Math.max(24, this.screenWidth() - 4);
-    const storiesLabel = `{bold}${this.stories.length}{/bold} {gray-fg}stories{/gray-fg}`;
+    const navChip = this.renderChromeChip("NAV", THEME.text, THEME.chipBg, true);
+    const openChip = this.renderChromeChip("OPEN", THEME.text, THEME.chipBg, true);
+    const rangeChip = this.renderChromeChip("RANGE", THEME.text, THEME.chipBg, true);
+    const exitChip = this.renderChromeChip("EXIT", THEME.text, THEME.chipBg, true);
+    const compactSelector = this.renderCompactDayWindowSelector();
 
     this.footer.show();
     this.footer.setContent(
       `{${THEME.border}-fg}${"─".repeat(dividerWidth)}{/}\n` +
-      ` {${THEME.textMuted}-fg}NAV{/} {${THEME.textSoft}-fg}↑{/}/{${THEME.textSoft}-fg}↓{/} move  {gray-fg}•{/} ` +
-      `{${THEME.textMuted}-fg}OPEN{/} {${THEME.textSoft}-fg}Enter{/}/{${THEME.textSoft}-fg}→{/}  {gray-fg}•{/} ` +
-      `{${THEME.textMuted}-fg}RANGE{/} ${selector}  {gray-fg}•{/} ` +
-      `{${THEME.textMuted}-fg}EXIT{/} {${THEME.textSoft}-fg}Esc{/}  {gray-fg}•{/} ${storiesLabel}`,
+      (
+        this.screenWidth() < 104
+          ? ` {${THEME.textMuted}-fg}MOVE{/} {${THEME.textSoft}-fg}↑{/}/{${THEME.textSoft}-fg}↓{/}  {gray-fg}•{/} ` +
+            `{${THEME.textMuted}-fg}OPEN{/} {${THEME.textSoft}-fg}↵{/}/{${THEME.textSoft}-fg}Space{/}/{${THEME.textSoft}-fg}→{/}  {gray-fg}•{/} ` +
+            `${compactSelector}  {gray-fg}•{/} {${THEME.textSoft}-fg}Esc{/}`
+          : ` ${navChip} {${THEME.textSoft}-fg}↑{/}/{${THEME.textSoft}-fg}↓{/} move  {gray-fg}•{/} ` +
+            `${openChip} {${THEME.textSoft}-fg}Enter{/}/{${THEME.textSoft}-fg}Space{/}/{${THEME.textSoft}-fg}→{/}  {gray-fg}•{/} ` +
+            `${rangeChip} ${selector}  {gray-fg}•{/} ` +
+            `${exitChip} {${THEME.textSoft}-fg}Esc{/}`
+      ),
     );
     this.renderClock();
   }
@@ -807,6 +840,29 @@ export class HackerNewsCli {
         ? `{gray-fg}synced ${this.formatClock(this.lastRefreshAt)}{/gray-fg}`
         : "{gray-fg}standby{/gray-fg}";
     const dividerWidth = Math.max(24, this.screenWidth() - 4);
+
+    if (this.view === "list") {
+      const feedChip = this.renderChromeChip(this.feedLabel(), THEME.bg, THEME.accent, true);
+      const rangeChip = this.renderChromeChip(this.dayWindowLabel().replace(/^Last\s+/u, ""), THEME.text, THEME.chipBg);
+      const syncChip = this.pendingStoryCount > 0
+        ? this.renderChromeChip(`${this.pendingStoryCount} new`, THEME.bg, THEME.selectedAccent, true)
+        : this.renderChromeChip(
+          this.lastRefreshAt ? `synced ${this.formatClock(this.lastRefreshAt)}` : "standby",
+          THEME.textSoft,
+          THEME.chipAlt,
+        );
+      const focusChip = this.renderChromeChip(`${selected}/${totalStories}`, THEME.bg, THEME.selectedAccent, true);
+      const focusTitle = totalStories > 0
+        ? truncate(this.currentStory().title, Math.max(22, this.screenWidth() - 34))
+        : "Awaiting ranked stories";
+
+      this.header.setContent(
+        `{bold}{${THEME.selectedAccent}-fg}${marker} HackerDispatch{/}{/bold}  ${feedChip} ${rangeChip} ${syncChip}\n` +
+        `${focusChip} {${THEME.hint}-fg}${escapeTags(focusTitle)}{/}\n` +
+        `{${THEME.borderSoft}-fg}${"─".repeat(dividerWidth)}{/}`,
+      );
+      return;
+    }
 
     this.header.setContent(
       `{bold}{${THEME.selectedAccent}-fg}${marker} HackerDispatch{/}{/bold} {${THEME.accentMuted}-fg}•{/} {gray-fg}${subtitle}{/gray-fg}\n` +
@@ -828,23 +884,27 @@ export class HackerNewsCli {
     }
 
     const width = Math.max(36, Math.floor(this.screenWidth() * 0.66) - 6);
+    const rankWidth = 4;
     const ageWidth = 4;
     const domainWidth = Math.min(18, Math.max(14, Math.floor(width * 0.2)));
     const scoreWidth = 6;
     const commentsWidth = 6;
-    const titleWidth = Math.max(10, width - ageWidth - domainWidth - scoreWidth - commentsWidth - 10);
+    const titleWidth = Math.max(10, width - rankWidth - ageWidth - domainWidth - scoreWidth - commentsWidth - 12);
 
-    const rows = this.stories.map((story) => {
+    const rows = this.stories.map((story, index) => {
+      const rank = escapeTags(padLeft(String(index + 1), rankWidth));
       const age = escapeTags(padLeft(formatAge(story.time), ageWidth));
       const title = escapeTags(padRight(truncate(story.title, titleWidth), titleWidth));
       const domain = escapeTags(padRight(truncate(story.domain, domainWidth), domainWidth));
       const score = escapeTags(padLeft(`${formatCount(story.score)}↑`, scoreWidth));
       const comments = escapeTags(padLeft(`${formatCount(story.comments)}c`, commentsWidth));
 
-      return `{${THEME.borderSoft}-fg}▏{/} {#9db4c7-fg}${age}{/} {bold}${title}{/bold} {gray-fg}·{/} {#7ab8e0-fg}${domain}{/} {gray-fg}·{/} {#f7d28a-fg}${score}{/} {#ffb787-fg}${comments}{/}`;
+      return `{${THEME.borderSoft}-fg}▏{/} {${THEME.accentMuted}-fg}${rank}{/} {${THEME.meta}-fg}${age}{/} {bold}${title}{/bold} {gray-fg}·{/} {${THEME.domain}-fg}${domain}{/} {gray-fg}·{/} {${THEME.score}-fg}${score}{/} {${THEME.comments}-fg}${comments}{/}`;
     });
 
-    this.listPanel.setLabel(` {${THEME.accent}-fg}Newswire{/} {gray-fg}· ${this.dayWindowLabel()}{/} `);
+    this.listPanel.setLabel(
+      ` ${this.renderChromeChip("Newswire", THEME.bg, THEME.accent, true)} {${THEME.meta}-fg}${escapeTags(this.dayWindowLabel())}{/} `,
+    );
     this.listRows = rows;
     this.list.setItems(this.listRows);
     this.listRowsDirty = false;
@@ -1037,9 +1097,9 @@ export class HackerNewsCli {
 
     this.loadingBody.setContent(
       `{bold}${escapeTags(title)}{/bold}\n\n${escapeTags(message)}\n\n` +
-      `{#7ab8e0-fg}${escapeTags(storiesLine)}{/}\n` +
-      `{#f7d28a-fg}${escapeTags(examinedLine)}{/}\n` +
-      `{#ffb787-fg}${escapeTags(coverageLine)}{/}\n` +
+      `{${THEME.domain}-fg}${escapeTags(storiesLine)}{/}\n` +
+      `{${THEME.score}-fg}${escapeTags(examinedLine)}{/}\n` +
+      `{${THEME.comments}-fg}${escapeTags(coverageLine)}{/}\n` +
       `{gray-fg}${escapeTags(remainingLine)}{/gray-fg}`,
     );
 
@@ -1053,23 +1113,37 @@ export class HackerNewsCli {
     }
 
     const story = this.currentStory();
+    const previewWidth = Math.max(24, this.screenWidth() - Math.floor(this.screenWidth() * 0.66) - 6);
     const dividerWidth = Math.max(16, Math.min(28, this.screenWidth() - Math.floor(this.screenWidth() * 0.66) - 8));
     const excerpt = story.textHtml
       ? this.cachedPreviewExcerpt(story)
-      : "No self-post text is attached to this story. Press Enter to render the linked page directly in the terminal reader.";
+      : "No self-post text is attached to this story. Press Enter or Space to render the linked page directly in the terminal reader.";
+    const statsLine = previewWidth < 38
+      ? `{${THEME.selectedAccent}-fg}#${this.selectedIndex + 1}{/} {gray-fg}·{/} ` +
+        `{${THEME.score}-fg}${formatCount(story.score)}↑{/} {gray-fg}·{/} ` +
+        `{${THEME.comments}-fg}${formatCount(story.comments)}c{/} {gray-fg}·{/} ` +
+        `{${THEME.time}-fg}${formatAge(story.time)}{/}`
+      : [
+        this.renderChromeChip(`#${this.selectedIndex + 1}`, THEME.bg, THEME.selectedAccent, true),
+        this.renderChromeChip(`${formatCount(story.score)} pts`, THEME.score, THEME.chipAlt),
+        this.renderChromeChip(`${formatCount(story.comments)} c`, THEME.comments, THEME.chipAlt),
+        this.renderChromeChip(formatAge(story.time), THEME.time, THEME.chipAlt),
+      ].join(" ");
+    const openChip = this.renderChromeChip("ENTER", THEME.bg, THEME.selectedAccent, true);
 
-    this.previewPanel.setLabel(` {${THEME.highlight}-fg}Story Focus{/} {gray-fg}· ${escapeTags(story.domain)}{/} `);
+    this.previewPanel.setLabel(
+      ` ${this.renderChromeChip("Story Focus", THEME.bg, THEME.selectedAccent, true)} {${THEME.meta}-fg}${escapeTags(story.domain)}{/} `,
+    );
 
     this.preview.setContent(
+      `${statsLine}\n\n` +
       `{bold}${escapeTags(story.title)}{/bold}\n` +
       `{${THEME.borderSoft}-fg}${"─".repeat(dividerWidth)}{/}\n\n` +
-      `{#7ab8e0-fg}${formatCount(story.score)}{/} {gray-fg}points{/gray-fg}   ` +
-      `{#ffb787-fg}${formatCount(story.comments)}{/} {gray-fg}comments{/gray-fg}   ` +
-      `{#f7d28a-fg}${formatAge(story.time)}{/} {gray-fg}old{/gray-fg}\n` +
       `{gray-fg}by ${escapeTags(story.by)} · ${escapeTags(story.domain)}{/gray-fg}\n\n` +
+      `{${THEME.accentMuted}-fg}Briefing{/}\n` +
       `${excerpt}\n\n` +
       `{${THEME.borderSoft}-fg}${"─".repeat(dividerWidth)}{/}\n` +
-      `{#9db4c7-fg}Press Enter or Right Arrow to open the reader. Esc or Left Arrow returns from the reader back to this list.{/}`,
+      `${openChip} {${THEME.hint}-fg}open the reader{/} {gray-fg}or use {/gray-fg}{${THEME.selectedAccent}-fg}Space{/}{gray-fg}/{/gray-fg}{${THEME.selectedAccent}-fg}→{/}`,
     );
     this.preview.setScrollPerc(0);
   }
@@ -1203,6 +1277,16 @@ export class HackerNewsCli {
       }
 
       return `{gray-fg}${days}d{/gray-fg}`;
+    }).join(" ");
+  }
+
+  private renderCompactDayWindowSelector(): string {
+    return DAY_WINDOWS.map((days) => {
+      if (days === this.dayWindow) {
+        return `{${THEME.highlight}-fg}[${days}]{/}`;
+      }
+
+      return `{gray-fg}${days}{/gray-fg}`;
     }).join(" ");
   }
 

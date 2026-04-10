@@ -86,17 +86,17 @@ export interface ArticleRenderOptions {
 }
 
 const DEFAULT_RENDER_THEME: ArticleRenderTheme = {
-  body: "#d9e6ef",
-  codeBg: "#112331",
+  body: "#dcecf2",
+  codeBg: "#15303a",
   codeText: "#f6f2e9",
-  headingPrimary: "#f4c095",
-  headingSecondary: "#40E0D0",
+  headingPrimary: "#ffbe72",
+  headingSecondary: "#49cbbb",
   inlineCodeBg: "#183142",
-  inlineCodeText: "#f4c095",
-  listBullet: "#40E0D0",
-  quoteRail: "#40E0D0",
-  quoteText: "#9fb8ca",
-  rule: "#294053",
+  inlineCodeText: "#ffd39b",
+  listBullet: "#49cbbb",
+  quoteRail: "#49cbbb",
+  quoteText: "#b3d7de",
+  rule: "#36707a",
 };
 
 export function blocksFromHtml(html: string): ArticleBlock[] {
