@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/batukoray/assets_of_mine/refs/heads/main/HaDi_Banner.png" width="600"/>
+<img src="https://raw.githubusercontent.com/batukoray/assets_of_mine/refs/heads/main/HaDi_Banner.png" height="200"/>
 
 
 **Ha**cker**Di**spatch, or **HaDi** is a full-screen terminal client for Hacker News built with TypeScript and `blessed`.
